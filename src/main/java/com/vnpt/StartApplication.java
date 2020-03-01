@@ -40,7 +40,7 @@ public class StartApplication  implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        updateNhanvien();
+        //updateNhanvien();
     }
 
     private void updateView() {
