@@ -1,11 +1,15 @@
 package com.vnpt.controllers;
 
+import com.vnpt.entities.NhanVien;
 import com.vnpt.entities.Quantity;
+import com.vnpt.repositories.NhanVienRepository;
+import com.vnpt.repositories.QuantityRepository;
 import com.vnpt.services.QuantityService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,10 +25,12 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
-@RequestMapping("/api/books")
+@RequestMapping("/api/quantities")
 public class QuantityController {
 
     public static final String uploadingDir = System.getProperty("user.dir") + "/uploadingDir/";
@@ -32,13 +38,23 @@ public class QuantityController {
     @Autowired
     QuantityService quantityService;
 
-    @GetMapping("/")
-    public List<Quantity> getAll() {
-        return quantityService.findAll();
+    @Autowired
+    QuantityRepository quantityRepository;
+
+    @Autowired
+    NhanVienRepository nhanVienRepository;
+
+    @GetMapping("/{createdBy}")
+    public List<Quantity> getAll(@PathVariable String createdBy) {
+        Map<String, String> nhanviens = nhanVienRepository.findAll().stream().collect( Collectors.toMap(NhanVien::getMaNV, NhanVien::getTenNV, (value1, value2) -> value1));
+        List<Quantity> result = quantityRepository.findByCreatedBy(createdBy);
+        result.stream().forEach(it -> it.setTenNV(nhanviens.get(it.getIdUser())));
+        return result;
     }
 
+    @Transactional
     @PostMapping("/upload")
-    public ResponseEntity uploadToLocalFileSystem(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity uploadToLocalFileSystem(@RequestParam String createdBy, @RequestParam("file") MultipartFile file) {
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         Path path = Paths.get(uploadingDir + fileName);
 
@@ -48,7 +64,7 @@ public class QuantityController {
             e.printStackTrace();
         }
 
-        readExcelFile(fileName);
+        readExcelFile(fileName, createdBy);
         String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/files/download/")
                 .path(fileName)
@@ -56,7 +72,8 @@ public class QuantityController {
         return ResponseEntity.ok(fileDownloadUri);
     }
 
-    private void readExcelFile(String fileName) {
+    private void readExcelFile(String fileName, String createdBy) {
+        quantityRepository.deleteByCreatedBy(createdBy);
         try {
 
             FileInputStream excelFile = new FileInputStream(new File(uploadingDir + fileName));
@@ -74,6 +91,7 @@ public class QuantityController {
                 quantity.setIdUser(currentRow.getCell(0).getStringCellValue());
                 quantity.setSales(currentRow.getCell(3).getNumericCellValue());
                 quantity.setType(currentRow.getCell(4).getStringCellValue());
+                quantity.setCreatedBy(createdBy);
                 quantityService.save(quantity);
             }
         } catch (FileNotFoundException e) {
