@@ -3,6 +3,8 @@ package com.vnpt;
 import com.vnpt.entities.NhanVien;
 import com.vnpt.entities.Quantity;
 import com.vnpt.entities.View;
+import com.vnpt.entities.factor;
+import com.vnpt.repositories.FactorRepository;
 import com.vnpt.repositories.NhanVienRepository;
 import com.vnpt.repositories.ViewRepository;
 import org.apache.poi.ss.usermodel.CellType;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,13 +37,18 @@ public class StartApplication  implements CommandLineRunner {
     @Autowired
     NhanVienRepository nhanVienRepository;
 
+    @Autowired
+    FactorRepository factorRepository;
+
     public static void main(String[] args) {
         SpringApplication.run(StartApplication.class, args);
     }
 
     @Override
     public void run(String... args) throws Exception {
-        updateNhanvien();
+        //updateNhanvien();
+        //updateFactor();
+        updateView();
     }
 
     private void updateView() {
@@ -50,17 +58,26 @@ public class StartApplication  implements CommandLineRunner {
             Sheet datatypeSheet = workbook.getSheetAt(0);
             Iterator<Row> iterator = datatypeSheet.iterator();
             iterator.next();
-            int i = 0;
-            while (iterator.hasNext() && i<= 6) {
+            while (iterator.hasNext()) {
 
                 Row currentRow = iterator.next();
-                if (currentRow.getCell(0) == null)
+                if (currentRow.getCell(0) == null || StringUtils.isEmpty(currentRow.getCell(0).getStringCellValue()))
                     continue;
                 View view = new View();
-                view.setTrungTam(currentRow.getCell(0).getStringCellValue());
-                view.setGoiCuoc(currentRow.getCell(6).getStringCellValue());
+                currentRow.getCell(0).setCellType(CellType.STRING);
+                view.setMa_nvpt(currentRow.getCell(0).getStringCellValue());
+                currentRow.getCell(1).setCellType(CellType.STRING);
+                view.setDoanhthu(currentRow.getCell(1).getStringCellValue());
+                currentRow.getCell(2).setCellType(CellType.STRING);
+                view.setNgay_hm(currentRow.getCell(2).getStringCellValue());
+                view.setDich_vu(currentRow.getCell(3) != null ? currentRow.getCell(3).getStringCellValue() : "");
+                view.setGoi_cuoc(currentRow.getCell(4).getStringCellValue());
+                currentRow.getCell(5).setCellType(CellType.STRING);
+                view.setMa_tb(currentRow.getCell(5).getStringCellValue());
+                view.setKhach_hang(currentRow.getCell(6).getStringCellValue());
+                currentRow.getCell(7).setCellType(CellType.STRING);
+                view.setMa_nvgt(currentRow.getCell(7).getStringCellValue());
                 viewRepository.save(view);
-                i++;
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -82,19 +99,35 @@ public class StartApplication  implements CommandLineRunner {
                 if (currentRow.getCell(0) == null)
                     continue;
                 NhanVien nhanVien = new NhanVien();
-                currentRow.getCell(1).setCellType(CellType.STRING);
-                nhanVien.setNhanvienId(currentRow.getCell(1).getStringCellValue());
-                nhanVien.setMaNV(currentRow.getCell(2).getStringCellValue());
-                nhanVien.setTenNV(currentRow.getCell(3).getStringCellValue());
-                currentRow.getCell(4).setCellType(CellType.STRING);
-                nhanVien.setDonviId(currentRow.getCell(4).getStringCellValue());
-                nhanVien.setMaDV(currentRow.getCell(5).getStringCellValue());
-                nhanVien.setTenDV(currentRow.getCell(6).getStringCellValue());
-                currentRow.getCell(7).setCellType(CellType.STRING);
-                nhanVien.setDonviChaID(currentRow.getCell(7).getStringCellValue());
-                nhanVien.setTenDVCha(currentRow.getCell(8).getStringCellValue());
-                nhanVien.setMaND(currentRow.getCell(9).getStringCellValue());
+                nhanVien.setMa_nv(currentRow.getCell(2).getStringCellValue());
+                nhanVien.setTen_nv(currentRow.getCell(3).getStringCellValue());
+                nhanVien.setTen_dv(currentRow.getCell(8).getStringCellValue());
                 nhanVienRepository.save(nhanVien);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateFactor() {
+        try {
+            FileInputStream excelFile = new FileInputStream(new File(uploadingDir + "factor.xlsx"));
+            Workbook workbook = new XSSFWorkbook(excelFile);
+            Sheet datatypeSheet = workbook.getSheetAt(0);
+            Iterator<Row> iterator = datatypeSheet.iterator();
+            iterator.next();
+            while (iterator.hasNext()) {
+
+                Row currentRow = iterator.next();
+                if (currentRow.getCell(0) == null || currentRow.getCell(1) == null)
+                    continue;
+                factor factor = new factor();
+                factor.setDich_vu(currentRow.getCell(0).getStringCellValue());
+                currentRow.getCell(1).setCellType(CellType.STRING);
+                factor.setHe_so(currentRow.getCell(1).getStringCellValue());
+                factorRepository.save(factor);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
